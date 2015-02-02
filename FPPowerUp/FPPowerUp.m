@@ -84,7 +84,8 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
 
 
 - (void) centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)aPeripheral advertisementData:(NSDictionary *)advertisementData RSSI:(NSNumber *)RSSI {
-    [_centralManager retrievePeripheralsWithIdentifiers:@[(id) aPeripheral.UUID]];
+	//TODO: use retrievePeripheralsWithIdentifiers: instead
+    [_centralManager retrievePeripherals:[NSArray arrayWithObject:(id)aPeripheral.UUID]];
 }
 
 - (void)centralManager:(CBCentralManager *)central didRetrievePeripherals:(NSArray *)peripherals {
@@ -134,6 +135,8 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
             //TODO: specify characteristics
             [peripheral discoverCharacteristics:nil forService:aService];
         }
+
+        //TODO: implement device info service
     }
 }
 
