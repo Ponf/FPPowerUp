@@ -26,11 +26,11 @@ Supported platforms: OS X (10.7+) and iOS (5.0+)
 }
 
 - (IBAction)connect:(id)sender {
-     [_powerUp connect]; 
+    [_powerUp connect]; 
 }
 
 - (void)powerUpDidConnect:(FPPowerUp *) powerUp {     
-	_powerUp.speed = 200;   //Accepting values between [0 ... 254]
-	_powerUp.rudder = 100;  //Accepting values between [-128 ... 127]
- }
+    _powerUp.speed = 200;   //Accepting values between [0 ... 254]
+    _powerUp.rudder = 100;  //Accepting values between [-128 ... 127]
+}
 ```
