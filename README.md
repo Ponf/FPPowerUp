@@ -12,9 +12,8 @@ Supported platforms: OS X (10.7+) and iOS (5.0+)
 
 **TODO:**
 
-* Battery Status
-* Replace deprecated CoreBluetooth APIs
-* Specify services UUIDs
+* Battery and Charging Status
+
 
 #Usage
 
