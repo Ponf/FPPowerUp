@@ -25,8 +25,6 @@ NSString *const kPowerUpDeviceInformationServiceUUID = @"180A";
     CBCentralManager *_centralManager;
     CBPeripheral *_peripheral;
 
-    NSMutableArray *_peripherals;
-
     CBCharacteristic *_speedCharacteristic;
     CBCharacteristic *_rudderCharacteristic;
 }
@@ -37,7 +35,6 @@ NSString *const kPowerUpDeviceInformationServiceUUID = @"180A";
         //TODO: move to another dispatch queue?
         _centralManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
         _state = PowerUpConnectionState_Disconnected;
-        _peripherals = [NSMutableArray new];
     }
 
     return self;
@@ -51,7 +48,7 @@ NSString *const kPowerUpDeviceInformationServiceUUID = @"180A";
 }
 
 - (void)setSpeed:(NSUInteger)speed {
-    BOOL correctValue = (speed >= 0) && (speed <= 254);
+    BOOL correctValue = (speed <= 254);
     NSCAssert(correctValue, @"Speed value must be in [0 ... 254] range");
     if (!correctValue)
         return;
@@ -86,19 +83,21 @@ NSString *const kPowerUpDeviceInformationServiceUUID = @"180A";
 }
 
 
-- (void) centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)aPeripheral advertisementData:(NSDictionary *)advertisementData RSSI:(NSNumber *)RSSI {
-    NSArray *peripherals = [_centralManager retrievePeripheralsWithIdentifiers:@[aPeripheral.identifier]];
-    if ([peripherals count] > 0) {
-        [_centralManager stopScan];
+- (void)centralManager:(CBCentralManager *)central
+ didDiscoverPeripheral:(CBPeripheral *)aPeripheral
+     advertisementData:(NSDictionary *)advertisementData
+                  RSSI:(NSNumber *)RSSI {
+    if (_peripheral != aPeripheral) {
         [self setState:PowerUpConnectionState_Connecting];
         _peripheral = aPeripheral;
         [_centralManager connectPeripheral:_peripheral
                                    options:nil];
+        [_centralManager stopScan];
     }
 }
 
 
-- (void) centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)aPeripheral {
+- (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)aPeripheral {
     [self setState:PowerUpConnectionState_DiscoveringServices];
     [aPeripheral setDelegate:self];
     [aPeripheral discoverServices:@[[CBUUID UUIDWithString:kPowerUpControlServiceUUID],
