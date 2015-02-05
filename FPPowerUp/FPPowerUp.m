@@ -15,7 +15,7 @@ NSString *const kPowerUpChargerCharacteristicUUID = @"86C3810E-0040-40D9-A117-26
 NSString *const kPowerUpBatteryServiceUUID = @"180F";
 NSString *const kPowerUpBatteryLevelCharacteristicUUID = @"2A19";
 
-NSString *const kPowerUpDeviceInformationService = @"180A";
+NSString *const kPowerUpDeviceInformationServiceUUID = @"180A";
 
 
 @interface FPPowerUp () <CBCentralManagerDelegate, CBPeripheralDelegate>
@@ -24,6 +24,8 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
 @implementation FPPowerUp {
     CBCentralManager *_centralManager;
     CBPeripheral *_peripheral;
+
+    NSMutableArray *_peripherals;
 
     CBCharacteristic *_speedCharacteristic;
     CBCharacteristic *_rudderCharacteristic;
@@ -35,6 +37,7 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
         //TODO: move to another dispatch queue?
         _centralManager = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
         _state = PowerUpConnectionState_Disconnected;
+        _peripherals = [NSMutableArray new];
     }
 
     return self;
@@ -84,23 +87,23 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
 
 
 - (void) centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)aPeripheral advertisementData:(NSDictionary *)advertisementData RSSI:(NSNumber *)RSSI {
-	//TODO: use retrievePeripheralsWithIdentifiers: instead
-    [_centralManager retrievePeripherals:[NSArray arrayWithObject:(id)aPeripheral.UUID]];
+    NSArray *peripherals = [_centralManager retrievePeripheralsWithIdentifiers:@[aPeripheral.identifier]];
+    if ([peripherals count] > 0) {
+        [_centralManager stopScan];
+        [self setState:PowerUpConnectionState_Connecting];
+        _peripheral = aPeripheral;
+        [_centralManager connectPeripheral:_peripheral
+                                   options:nil];
+    }
 }
 
-- (void)centralManager:(CBCentralManager *)central didRetrievePeripherals:(NSArray *)peripherals {
-    [_centralManager stopScan];
-    [self setState:PowerUpConnectionState_Connecting];
-    _peripheral = [peripherals firstObject];
-    [_centralManager connectPeripheral:_peripheral
-                               options:@{CBConnectPeripheralOptionNotifyOnDisconnectionKey : @(YES)}];
-}
 
 - (void) centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)aPeripheral {
     [self setState:PowerUpConnectionState_DiscoveringServices];
     [aPeripheral setDelegate:self];
-    //TODO: specify services
-    [aPeripheral discoverServices:nil];
+    [aPeripheral discoverServices:@[[CBUUID UUIDWithString:kPowerUpControlServiceUUID],
+                                    [CBUUID UUIDWithString:kPowerUpBatteryServiceUUID],
+                                    [CBUUID UUIDWithString:kPowerUpDeviceInformationServiceUUID]]];
 
 }
 
@@ -126,14 +129,16 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
     for (CBService *aService in peripheral.services) {
         /* Control Services */
         if ([aService.UUID isEqual:[CBUUID UUIDWithString:kPowerUpControlServiceUUID]]) {
-            //TODO: specify characteristics
-            [peripheral discoverCharacteristics:nil forService:aService];
+            [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString:kPowerUpRudderCharacteristicUUID],
+                                                  [CBUUID UUIDWithString:kPowerUpSpeedCharacteristicUUID],
+                                                  [CBUUID UUIDWithString:kPowerUpChargerCharacteristicUUID]]
+                                     forService:aService];
         }
 
         /* Battery Services */
         if ([aService.UUID isEqual:[CBUUID UUIDWithString:kPowerUpBatteryServiceUUID]]) {
-            //TODO: specify characteristics
-            [peripheral discoverCharacteristics:nil forService:aService];
+            [peripheral discoverCharacteristics:@[[CBUUID UUIDWithString:kPowerUpBatteryLevelCharacteristicUUID]]
+                                     forService:aService];
         }
 
         //TODO: implement device info service
@@ -186,7 +191,7 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
 
     if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:kPowerUpChargerCharacteristicUUID]]) {
         if (characteristic.value) {
-            //TODO: implement battery level
+            //TODO: implement charging indication
         }
     }
 }
@@ -220,8 +225,8 @@ NSString *const kPowerUpDeviceInformationService = @"180A";
 - (void)discoverPlane {
     [_centralManager stopScan];
     [self setState:PowerUpConnectionState_Scanning];
-    //TODO: specify UUIDs?
-    [_centralManager scanForPeripheralsWithServices:@[[CBUUID UUIDWithString:kPowerUpControlServiceUUID]] options:nil];
+    [_centralManager scanForPeripheralsWithServices:@[[CBUUID UUIDWithString:kPowerUpControlServiceUUID]]
+                                            options:nil];
 }
 
 - (void)setState:(PowerUpConnectionState)state {
